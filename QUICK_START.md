@@ -24,6 +24,7 @@ open index.html
 - **Molette** : Zoom
 - **Clic gauche** : Placer un bâtiment
 - **Clic droit** : Inspecter un bâtiment
+- **Survol** : Voir l'inventaire en temps réel !
 - **Espace** : Pause/Play
 
 ## Premiers pas 🎓
@@ -36,9 +37,12 @@ open index.html
 
 ## Astuces 💡
 
+- **Passez la souris** sur un bâtiment pour voir son inventaire en temps réel !
 - Les **lignes dorées** montrent les flux de ressources
 - Un **point vert** = bâtiment en production
-- **Clic droit** sur un bâtiment pour voir son inventaire
+- **Les convoyeurs** ont des bandes animées qui montrent le flux
+- **Utilisez des convoyeurs** pour connecter des bâtiments éloignés (capacité: 10 unités)
+- **Clic droit** sur un bâtiment pour tous les détails
 - Alignez vos bâtiments pour créer des chaînes automatiques !
 
 ---
