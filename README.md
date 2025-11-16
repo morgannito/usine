@@ -10,10 +10,12 @@ Un jeu de construction d'usine inspiré de **Factorio** et **Satisfactory**, jou
 
 - **Construction d'usines automatisées** : Placez des bâtiments et créez des chaînes de production
 - **Transport automatique** : Les ressources sont transférées automatiquement entre bâtiments adjacents !
+- **Convoyeurs fonctionnels** : Transportez les ressources sur de longues distances avec animation !
+- **Tooltips au survol** : Voir l'inventaire et la production en passant la souris sur les bâtiments
 - **12 types de ressources** : Minerais, plaques, acier, circuits, câbles, béton et plus
 - **9 types de bâtiments** : Extracteurs, fourneaux, assembleurs avancés, convoyeurs et stockage
 - **Système de crafting** : Transformez les ressources brutes en composants complexes
-- **Animations visuelles** : Particules, pulsations, indicateurs de connexion
+- **Animations visuelles** : Particules, pulsations, indicateurs de connexion, bandes de convoyeurs
 - **Carte procédurale** : Nœuds de ressources générés aléatoirement
 - **Sauvegarde locale** : Système complet de sauvegarde/chargement
 - **Interface intuitive** : Contrôles simples et UI claire
@@ -105,6 +107,7 @@ npx http-server
 | **Molette** | Zoom / Dézoom |
 | **Clic gauche** | Placer un bâtiment sélectionné |
 | **Clic droit** | Sélectionner et inspecter un bâtiment |
+| **Survol** | Voir les ressources et la production d'un bâtiment |
 | **Espace** | Pause / Play |
 
 ### 📦 Types de ressources
@@ -155,7 +158,12 @@ npx http-server
   - ✨ **Transfert automatique activé**
 
 #### Logistique
-- **Convoyeur** - Transporte les ressources entre bâtiments
+- **Convoyeur** - Transporte les ressources sur de longues distances
+  - Capacité : 10 unités en transit
+  - Vitesse : 2 ressources/seconde
+  - Accepte toutes les ressources
+  - ✨ **Bandes animées montrant le flux**
+  - ✨ **Affichage du nombre de ressources transportées**
 - **Stockage** - Stocke jusqu'à 100 unités de ressources
 
 ## 🎓 Guide de démarrage
@@ -189,7 +197,10 @@ Les nœuds de ressources sont représentés par des cercles colorés sur la cart
 - **Lignes dorées** : Montrent les transferts automatiques de ressources entre bâtiments
 - **Particules** : Des icônes de ressources s'envolent lors de la production
 - **Pulsation** : Les bâtiments actifs pulsent légèrement
-- **Clic droit** : Inspectez un bâtiment pour voir son inventaire et sa progression
+- **Survol de la souris** : Passez la souris sur un bâtiment pour voir son inventaire en temps réel !
+- **Convoyeurs** : Les bandes animées montrent que les ressources circulent
+- **Clic droit** : Inspectez un bâtiment pour voir tous les détails
+- **Chaînes longues** : Utilisez des convoyeurs pour connecter des bâtiments éloignés
 
 ## 🔧 Architecture technique
 
@@ -310,8 +321,16 @@ docker inspect usine-game | grep -A 10 Health
 docker stats usine-game
 ```
 
-## ✅ Nouvelles fonctionnalités (v2.0)
+## ✅ Dernières fonctionnalités (v2.5)
 
+### Version 2.5 - Tooltips et Convoyeurs
+- ✅ **Tooltips au survol** : Voir l'inventaire et la production en temps réel !
+- ✅ **Convoyeurs fonctionnels** : Transport de ressources sur de longues distances
+- ✅ **Animations de convoyeurs** : Bandes mobiles animées montrant le flux
+- ✅ **Capacité des convoyeurs** : 10 unités en transit, vitesse 2/sec
+- ✅ **Affichage intelligent** : Nombre de ressources visible sur les convoyeurs
+
+### Version 2.0 - Transport automatique
 - ✅ **Transport automatique** : Les ressources circulent automatiquement entre bâtiments adjacents
 - ✅ **Nouvelles ressources** : Acier, câbles, circuits avancés, béton, pierre
 - ✅ **Nouveaux bâtiments** : Haut fourneau, assembleur avancé, carrière de pierre
@@ -321,16 +340,20 @@ docker stats usine-game
 
 ## 🚧 Fonctionnalités à venir
 
-- [ ] Système de convoyeurs longue distance
+- [ ] Rotation des convoyeurs pour orienter le flux
+- [ ] Diviseurs et fusionneurs de convoyeurs
 - [ ] Plus de bâtiments (raffineries, centrales électriques)
 - [ ] Système d'électricité avec gestion de l'énergie
 - [ ] Système de recherche/technologie
 - [ ] Statistiques de production détaillées
-- [ ] Mode construction rapide
+- [ ] Mode construction rapide (copier-coller)
+- [ ] Blueprint/modèles de construction
 - [ ] Optimisation pour très grandes usines (1000+ bâtiments)
 - [ ] Effets sonores et musique
 - [ ] Mode tutoriel interactif
 - [ ] Défis et objectifs de production
+- [ ] Robots logistiques volants
+- [ ] Trains pour transport longue distance
 
 ## 🎨 Personnalisation
 
