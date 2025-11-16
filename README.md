@@ -21,12 +21,57 @@ Un jeu de construction d'usine inspiré de **Factorio** et **Satisfactory**, jou
 
 ## 🚀 Comment jouer
 
-### Installation
+### 🐳 Installation avec Docker (Recommandé)
+
+La méthode la plus simple pour déployer le jeu !
+
+```bash
+# Clonez le dépôt
+git clone <url-du-repo>
+cd usine
+
+# Démarrage rapide avec le script
+./start-docker.sh
+
+# Ou manuellement avec Docker Compose
+docker-compose up -d
+
+# Le jeu est maintenant disponible sur http://localhost:8080
+```
+
+**Commandes Docker utiles :**
+```bash
+# Voir les logs
+docker-compose logs -f
+
+# Arrêter le jeu
+docker-compose down
+
+# Redémarrer le jeu
+docker-compose restart
+
+# Voir le statut
+docker-compose ps
+
+# Reconstruire l'image
+docker-compose build --no-cache
+```
+
+**Avantages Docker :**
+- ✅ Déploiement en une commande
+- ✅ Pas de dépendances à installer
+- ✅ Serveur nginx optimisé
+- ✅ Compression gzip activée
+- ✅ Configuration de sécurité
+- ✅ Healthcheck automatique
+- ✅ Facile à déployer sur un serveur
+
+### 📁 Installation locale (Sans Docker)
 
 Aucune installation requise ! Ouvrez simplement `index.html` dans votre navigateur web moderne.
 
 ```bash
-# Clonez le dépôt (si applicable)
+# Clonez le dépôt
 git clone <url-du-repo>
 cd usine
 
@@ -152,10 +197,15 @@ Les nœuds de ressources sont représentés par des cercles colorés sur la cart
 
 ```
 usine/
-├── index.html      # Structure HTML et canvas
-├── styles.css      # Interface utilisateur et styles
-├── game.js         # Moteur de jeu complet
-└── README.md       # Ce fichier
+├── index.html          # Structure HTML et canvas
+├── styles.css          # Interface utilisateur et styles
+├── game.js             # Moteur de jeu complet
+├── README.md           # Documentation
+├── Dockerfile          # Image Docker
+├── docker-compose.yml  # Configuration Docker Compose
+├── nginx.conf          # Configuration Nginx
+├── .dockerignore       # Fichiers exclus de l'image
+└── start-docker.sh     # Script de démarrage rapide
 ```
 
 ### Composants principaux
@@ -177,6 +227,87 @@ const CONFIG = {
     GRID_HEIGHT: 100,        // Hauteur de la carte
     PRODUCTION_TICK_RATE: 1000, // Vitesse de production (ms)
 };
+```
+
+## 🐳 Déploiement Docker
+
+### Architecture Docker
+
+Le jeu utilise une image **nginx:alpine** ultra-légère (~10 MB) pour servir les fichiers statiques.
+
+**Stack technique :**
+- **Image de base** : nginx:alpine (serveur web léger)
+- **Port exposé** : 80 (mappé sur 8080 de l'hôte)
+- **Healthcheck** : Vérifie la disponibilité toutes les 30s
+- **Network** : Bridge isolé pour la sécurité
+- **Restart policy** : unless-stopped (redémarrage automatique)
+
+### Fichiers Docker
+
+#### Dockerfile
+- Copie les fichiers HTML/CSS/JS dans `/usr/share/nginx/html/`
+- Configure nginx avec compression gzip
+- Headers de sécurité (X-Frame-Options, X-XSS-Protection, etc.)
+- Healthcheck intégré pour monitoring
+
+#### docker-compose.yml
+- Définit le service `usine-game`
+- Mapping de port : 8080:80
+- Configuration réseau isolée
+- Healthcheck automatique
+
+#### nginx.conf
+- Compression gzip pour améliorer les performances
+- Cache des ressources statiques (1 heure)
+- Headers de sécurité
+- Logs d'accès et d'erreurs
+
+### Déploiement sur serveur
+
+**Sur un serveur Linux :**
+```bash
+# 1. Cloner le dépôt
+git clone <url-du-repo>
+cd usine
+
+# 2. Démarrer avec Docker Compose
+docker-compose up -d
+
+# 3. Vérifier que le conteneur tourne
+docker-compose ps
+
+# 4. Le jeu est accessible sur http://votre-ip:8080
+```
+
+**Avec un reverse proxy (nginx/traefik) :**
+```yaml
+# Exemple de configuration avec Traefik
+services:
+  usine-game:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.usine.rule=Host(`usine.votredomaine.com`)"
+      - "traefik.http.services.usine.loadbalancer.server.port=80"
+```
+
+**Personnaliser le port :**
+```bash
+# Modifier docker-compose.yml
+ports:
+  - "80:80"  # Port 80 au lieu de 8080
+```
+
+### Monitoring et logs
+
+```bash
+# Voir les logs en temps réel
+docker-compose logs -f usine-game
+
+# Vérifier le healthcheck
+docker inspect usine-game | grep -A 10 Health
+
+# Statistiques d'utilisation
+docker stats usine-game
 ```
 
 ## ✅ Nouvelles fonctionnalités (v2.0)
