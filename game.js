@@ -10,6 +10,8 @@ const CONFIG = {
     GRID_HEIGHT: 100,
     FPS_UPDATE_INTERVAL: 500,
     PRODUCTION_TICK_RATE: 1000, // Mise à jour de la production toutes les secondes
+    TRANSFER_RATE: 1, // Ressources transférées par tick entre bâtiments adjacents
+    MAX_TRANSFER_DISTANCE: 1, // Distance maximale pour le transfert automatique
 };
 
 // Types de ressources
@@ -17,10 +19,15 @@ const RESOURCES = {
     IRON_ORE: { name: 'Minerai de Fer', color: '#8B4513', icon: '⛏️' },
     COPPER_ORE: { name: 'Minerai de Cuivre', color: '#CD7F32', icon: '⛏️' },
     COAL: { name: 'Charbon', color: '#2F4F4F', icon: '⛏️' },
+    STONE: { name: 'Pierre', color: '#808080', icon: '🪨' },
     IRON_PLATE: { name: 'Plaque de Fer', color: '#A9A9A9', icon: '▭' },
     COPPER_PLATE: { name: 'Plaque de Cuivre', color: '#B87333', icon: '▭' },
+    STEEL: { name: 'Acier', color: '#4A5568', icon: '⬛' },
     GEAR: { name: 'Engrenage', color: '#C0C0C0', icon: '⚙️' },
     CIRCUIT: { name: 'Circuit', color: '#00FF00', icon: '⚡' },
+    ADVANCED_CIRCUIT: { name: 'Circuit Avancé', color: '#FF00FF', icon: '💎' },
+    WIRE: { name: 'Câble', color: '#FF8C00', icon: '〰️' },
+    CONCRETE: { name: 'Béton', color: '#696969', icon: '▪️' },
 };
 
 // Types de bâtiments
@@ -49,6 +56,14 @@ const BUILDING_TYPES = {
         productionRate: 1,
         requiresResource: true,
     },
+    STONE_EXTRACTOR: {
+        name: 'Carrière de Pierre',
+        description: 'Extrait de la pierre',
+        color: '#808080',
+        produces: 'STONE',
+        productionRate: 1,
+        requiresResource: true,
+    },
     FURNACE: {
         name: 'Fourneau',
         description: 'Transforme les minerais en plaques',
@@ -57,15 +72,37 @@ const BUILDING_TYPES = {
             { input: { IRON_ORE: 1 }, output: { IRON_PLATE: 1 }, time: 1 },
             { input: { COPPER_ORE: 1 }, output: { COPPER_PLATE: 1 }, time: 1 },
         ],
+        autoOutput: true, // Transfert automatique des produits finis
+    },
+    STEEL_FURNACE: {
+        name: 'Haut Fourneau',
+        description: 'Produit de l\'acier',
+        color: '#DC143C',
+        recipes: [
+            { input: { IRON_PLATE: 5, COAL: 2 }, output: { STEEL: 1 }, time: 3 },
+        ],
+        autoOutput: true,
     },
     ASSEMBLER: {
         name: 'Assembleur',
-        description: 'Fabrique des composants complexes',
+        description: 'Fabrique des composants',
         color: '#4169E1',
         recipes: [
             { input: { IRON_PLATE: 2 }, output: { GEAR: 1 }, time: 1 },
+            { input: { COPPER_PLATE: 1 }, output: { WIRE: 2 }, time: 1 },
             { input: { COPPER_PLATE: 2, IRON_PLATE: 1 }, output: { CIRCUIT: 1 }, time: 2 },
         ],
+        autoOutput: true,
+    },
+    ADVANCED_ASSEMBLER: {
+        name: 'Assembleur Avancé',
+        description: 'Fabrique des composants complexes',
+        color: '#9370DB',
+        recipes: [
+            { input: { CIRCUIT: 2, COPPER_PLATE: 2, WIRE: 4 }, output: { ADVANCED_CIRCUIT: 1 }, time: 4 },
+            { input: { STONE: 5, IRON_ORE: 1 }, output: { CONCRETE: 10 }, time: 2 },
+        ],
+        autoOutput: true,
     },
     CONVEYOR: {
         name: 'Convoyeur',
@@ -139,6 +176,8 @@ class Building {
         this.productionProgress = 0;
         this.currentRecipe = null;
         this.direction = 0; // 0: right, 1: down, 2: left, 3: up
+        this.animationTime = 0; // Pour les animations
+        this.particleEffects = []; // Effets de particules
 
         // Initialiser l'inventaire
         Object.keys(RESOURCES).forEach(res => {
@@ -170,12 +209,16 @@ class Building {
     }
 
     produce(deltaTime) {
+        // Mise à jour de l'animation
+        this.animationTime += deltaTime;
+
         if (this.config.produces) {
             // Production simple (extracteur)
             this.productionProgress += deltaTime;
             if (this.productionProgress >= 1) {
                 this.inventory[this.config.produces] += this.config.productionRate;
                 this.productionProgress = 0;
+                this.createParticleEffect(this.config.produces);
             }
         } else if (this.currentRecipe && this.canProduce()) {
             // Production avec recette
@@ -188,10 +231,79 @@ class Building {
                 // Produire les ressources de sortie
                 for (let [resource, amount] of Object.entries(this.currentRecipe.output)) {
                     this.inventory[resource] += amount;
+                    this.createParticleEffect(resource);
                 }
                 this.productionProgress = 0;
             }
         }
+    }
+
+    createParticleEffect(resourceType) {
+        // Ajouter un effet de particule simple
+        this.particleEffects.push({
+            resourceType: resourceType,
+            time: 0,
+            maxTime: 0.5,
+        });
+    }
+
+    updateParticles(deltaTime) {
+        // Mettre à jour et nettoyer les particules
+        this.particleEffects = this.particleEffects.filter(particle => {
+            particle.time += deltaTime;
+            return particle.time < particle.maxTime;
+        });
+    }
+
+    // Transférer des ressources vers un autre bâtiment
+    transferTo(targetBuilding, resourceType, amount) {
+        if (this.inventory[resourceType] >= amount) {
+            this.inventory[resourceType] -= amount;
+            targetBuilding.inventory[resourceType] += amount;
+            return true;
+        }
+        return false;
+    }
+
+    // Déterminer quelles ressources ce bâtiment a besoin
+    getNeededResources() {
+        const needed = {};
+
+        if (this.currentRecipe) {
+            for (let [resource, amount] of Object.entries(this.currentRecipe.input)) {
+                const current = this.inventory[resource] || 0;
+                const shortage = Math.max(0, amount * 3 - current); // Stocker 3x la recette
+                if (shortage > 0) {
+                    needed[resource] = shortage;
+                }
+            }
+        }
+
+        return needed;
+    }
+
+    // Déterminer quelles ressources ce bâtiment peut fournir
+    getAvailableResources() {
+        const available = {};
+
+        // Pour les extracteurs et les machines avec autoOutput
+        if (this.config.produces || this.config.autoOutput) {
+            for (let [resource, amount] of Object.entries(this.inventory)) {
+                if (amount > 0) {
+                    // Si c'est un produit de ce bâtiment
+                    if (this.config.produces === resource) {
+                        available[resource] = amount;
+                    } else if (this.currentRecipe) {
+                        // Si c'est un produit de sortie de la recette
+                        if (this.currentRecipe.output[resource]) {
+                            available[resource] = amount;
+                        }
+                    }
+                }
+            }
+        }
+
+        return available;
     }
 
     getInfo() {
@@ -253,6 +365,7 @@ class GameMap {
             { type: 'IRON_ORE', count: 15 },
             { type: 'COPPER_ORE', count: 12 },
             { type: 'COAL', count: 10 },
+            { type: 'STONE', count: 8 },
         ];
 
         nodeTypes.forEach(({ type, count }) => {
@@ -307,6 +420,67 @@ class GameMap {
             }
         }
         return buildings;
+    }
+
+    // Obtenir les bâtiments adjacents
+    getAdjacentBuildings(x, y) {
+        const adjacent = [];
+        const directions = [
+            { dx: 1, dy: 0 },   // droite
+            { dx: -1, dy: 0 },  // gauche
+            { dx: 0, dy: 1 },   // bas
+            { dx: 0, dy: -1 },  // haut
+        ];
+
+        directions.forEach(({ dx, dy }) => {
+            const building = this.getBuilding(x + dx, y + dy);
+            if (building) {
+                adjacent.push(building);
+            }
+        });
+
+        return adjacent;
+    }
+
+    // Transférer automatiquement les ressources entre bâtiments
+    autoTransferResources() {
+        const buildings = this.getAllBuildings();
+
+        buildings.forEach(sourceBuilding => {
+            const available = sourceBuilding.getAvailableResources();
+
+            // Pour chaque ressource disponible
+            for (let [resourceType, amount] of Object.entries(available)) {
+                if (amount > 0) {
+                    // Trouver les bâtiments adjacents qui ont besoin de cette ressource
+                    const adjacentBuildings = this.getAdjacentBuildings(
+                        sourceBuilding.x,
+                        sourceBuilding.y
+                    );
+
+                    adjacentBuildings.forEach(targetBuilding => {
+                        const needed = targetBuilding.getNeededResources();
+
+                        if (needed[resourceType] && needed[resourceType] > 0) {
+                            // Transférer des ressources
+                            const transferAmount = Math.min(
+                                CONFIG.TRANSFER_RATE,
+                                amount,
+                                needed[resourceType]
+                            );
+
+                            if (transferAmount > 0) {
+                                sourceBuilding.transferTo(
+                                    targetBuilding,
+                                    resourceType,
+                                    transferAmount
+                                );
+                            }
+                        }
+                    });
+                }
+            }
+        });
     }
 }
 
@@ -476,11 +650,20 @@ class Game {
     updateProduction(deltaTime) {
         this.lastProductionUpdate += deltaTime * 1000;
 
+        // Mettre à jour les particules de tous les bâtiments
+        const buildings = this.map.getAllBuildings();
+        buildings.forEach(building => {
+            building.updateParticles(deltaTime);
+        });
+
         if (this.lastProductionUpdate >= CONFIG.PRODUCTION_TICK_RATE) {
-            const buildings = this.map.getAllBuildings();
             buildings.forEach(building => {
                 building.produce(1); // 1 tick de production
             });
+
+            // Transférer automatiquement les ressources entre bâtiments adjacents
+            this.map.autoTransferResources();
+
             this.lastProductionUpdate = 0;
         }
 
@@ -598,13 +781,51 @@ class Game {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             ctx.fillRect(x + 4, y + 4, CONFIG.TILE_SIZE - 8, CONFIG.TILE_SIZE - 8);
 
+            // Animation de pulsation pour les bâtiments actifs
+            let scale = 1;
+            if (building.canProduce() && building.productionProgress > 0) {
+                scale = 1 + Math.sin(building.animationTime * 4) * 0.02;
+            }
+
+            const centerX = x + CONFIG.TILE_SIZE / 2;
+            const centerY = y + CONFIG.TILE_SIZE / 2;
+            const size = (CONFIG.TILE_SIZE - 4) * scale;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
             // Bâtiment
             ctx.fillStyle = building.config.color;
-            ctx.fillRect(x + 2, y + 2, CONFIG.TILE_SIZE - 4, CONFIG.TILE_SIZE - 4);
+            ctx.fillRect(-size / 2, -size / 2, size, size);
 
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
-            ctx.strokeRect(x + 2, y + 2, CONFIG.TILE_SIZE - 4, CONFIG.TILE_SIZE - 4);
+            ctx.strokeRect(-size / 2, -size / 2, size, size);
+
+            ctx.restore();
+
+            // Indicateur de production active
+            if (building.canProduce() && building.productionProgress > 0) {
+                const indicatorSize = 8;
+                ctx.fillStyle = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(x + CONFIG.TILE_SIZE - 10, y + 10, indicatorSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Particules
+            building.particleEffects.forEach(particle => {
+                const progress = particle.time / particle.maxTime;
+                const particleY = y - (progress * 30);
+                const particleAlpha = 1 - progress;
+
+                ctx.globalAlpha = particleAlpha;
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = RESOURCES[particle.resourceType].color;
+                ctx.fillText(RESOURCES[particle.resourceType].icon, centerX, particleY);
+                ctx.globalAlpha = 1;
+            });
 
             // Barre de progression
             if (building.currentRecipe) {
@@ -623,6 +844,33 @@ class Game {
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 1;
                 ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
+
+            // Indicateurs de connexion (flèches vers bâtiments adjacents)
+            const adjacentBuildings = this.map.getAdjacentBuildings(building.x, building.y);
+            const available = building.getAvailableResources();
+
+            if (Object.keys(available).length > 0 && adjacentBuildings.length > 0) {
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.3 + Math.sin(building.animationTime * 3) * 0.2;
+
+                adjacentBuildings.forEach(adjacent => {
+                    const needed = adjacent.getNeededResources();
+                    const hasMatch = Object.keys(available).some(res => needed[res]);
+
+                    if (hasMatch) {
+                        const adjX = adjacent.x * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+                        const adjY = adjacent.y * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, centerY);
+                        ctx.lineTo(adjX, adjY);
+                        ctx.stroke();
+                    }
+                });
+
+                ctx.globalAlpha = 1;
             }
         });
     }

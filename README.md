@@ -9,10 +9,13 @@ Un jeu de construction d'usine inspiré de **Factorio** et **Satisfactory**, jou
 ## 🎮 Caractéristiques
 
 - **Construction d'usines automatisées** : Placez des bâtiments et créez des chaînes de production
-- **Système de ressources** : Minerai de fer, cuivre, charbon et ressources transformées
-- **Machines de production** : Extracteurs, fourneaux, assembleurs, convoyeurs et stockage
+- **Transport automatique** : Les ressources sont transférées automatiquement entre bâtiments adjacents !
+- **12 types de ressources** : Minerais, plaques, acier, circuits, câbles, béton et plus
+- **9 types de bâtiments** : Extracteurs, fourneaux, assembleurs avancés, convoyeurs et stockage
 - **Système de crafting** : Transformez les ressources brutes en composants complexes
+- **Animations visuelles** : Particules, pulsations, indicateurs de connexion
 - **Carte procédurale** : Nœuds de ressources générés aléatoirement
+- **Sauvegarde locale** : Système complet de sauvegarde/chargement
 - **Interface intuitive** : Contrôles simples et UI claire
 - **Performance optimisée** : Rendu efficace avec Canvas 2D
 
@@ -65,12 +68,17 @@ npx http-server
 - **Minerai de Fer** ⛏️ - Extrait des nœuds de fer
 - **Minerai de Cuivre** ⛏️ - Extrait des nœuds de cuivre
 - **Charbon** ⛏️ - Extrait des nœuds de charbon
+- **Pierre** 🪨 - Extrait des carrières
 
 #### Ressources transformées
-- **Plaque de Fer** ▭ - Minerai de fer fondu
-- **Plaque de Cuivre** ▭ - Minerai de cuivre fondu
+- **Plaque de Fer** ▭ - Minerai de fer fondu (1 minerai → 1 plaque)
+- **Plaque de Cuivre** ▭ - Minerai de cuivre fondu (1 minerai → 1 plaque)
+- **Acier** ⬛ - Produit du haut fourneau (5 plaques de fer + 2 charbons → 1 acier)
 - **Engrenage** ⚙️ - Fabriqué avec 2 plaques de fer
+- **Câble** 〰️ - Fabriqué avec 1 plaque de cuivre (produit 2 câbles)
 - **Circuit** ⚡ - Fabriqué avec 2 plaques de cuivre + 1 plaque de fer
+- **Circuit Avancé** 💎 - Fabriqué avec 2 circuits + 2 plaques de cuivre + 4 câbles
+- **Béton** ▪️ - Fabriqué avec 5 pierres + 1 minerai de fer (produit 10 bétons)
 
 ### 🏗️ Types de bâtiments
 
@@ -78,18 +86,31 @@ npx http-server
 - **Extracteur de Fer** - Produit du minerai de fer (doit être placé sur un nœud de fer)
 - **Extracteur de Cuivre** - Produit du minerai de cuivre (doit être placé sur un nœud de cuivre)
 - **Extracteur de Charbon** - Produit du charbon (doit être placé sur un nœud de charbon)
+- **Carrière de Pierre** - Extrait de la pierre (doit être placé sur un nœud de pierre)
 
 #### Machines de transformation
 - **Fourneau** - Transforme les minerais en plaques
   - Minerai de Fer → Plaque de Fer (1:1)
   - Minerai de Cuivre → Plaque de Cuivre (1:1)
+  - ✨ **Transfert automatique activé**
 
-- **Assembleur** - Fabrique des composants complexes
+- **Haut Fourneau** - Produit de l'acier
+  - 5 Plaques de Fer + 2 Charbons → 1 Acier
+  - ✨ **Transfert automatique activé**
+
+- **Assembleur** - Fabrique des composants
   - 2 Plaques de Fer → 1 Engrenage
+  - 1 Plaque de Cuivre → 2 Câbles
   - 2 Plaques de Cuivre + 1 Plaque de Fer → 1 Circuit
+  - ✨ **Transfert automatique activé**
+
+- **Assembleur Avancé** - Fabrique des composants complexes
+  - 2 Circuits + 2 Plaques de Cuivre + 4 Câbles → 1 Circuit Avancé
+  - 5 Pierres + 1 Minerai de Fer → 10 Bétons
+  - ✨ **Transfert automatique activé**
 
 #### Logistique
-- **Convoyeur** - Transporte les ressources entre bâtiments (à venir)
+- **Convoyeur** - Transporte les ressources entre bâtiments
 - **Stockage** - Stocke jusqu'à 100 unités de ressources
 
 ## 🎓 Guide de démarrage
@@ -99,6 +120,7 @@ Les nœuds de ressources sont représentés par des cercles colorés sur la cart
 - 🟤 Marron = Fer
 - 🟠 Orange = Cuivre
 - ⚫ Gris foncé = Charbon
+- ⚪ Gris = Pierre
 
 ### Étape 2 : Placer des extracteurs
 1. Cliquez sur un type d'extracteur dans le menu de gauche
@@ -106,15 +128,23 @@ Les nœuds de ressources sont représentés par des cercles colorés sur la cart
 3. Cliquez sur le nœud pour placer l'extracteur
 
 ### Étape 3 : Construire des machines
-1. Placez un fourneau près de vos extracteurs
+1. Placez un fourneau **adjacent** (côte à côte) à votre extracteur
 2. L'extracteur produira automatiquement du minerai
-3. Transférez manuellement le minerai au fourneau (pour l'instant)
+3. **Les ressources sont transférées automatiquement** vers le fourneau adjacent !
 4. Le fourneau transformera le minerai en plaques
 
 ### Étape 4 : Automatiser la production
-1. Placez des assembleurs pour créer des composants
-2. Créez des chaînes de production complètes
-3. Optimisez vos usines pour une production maximale !
+1. Placez des assembleurs **adjacents** aux fourneaux pour recevoir les plaques
+2. Les ressources circulent automatiquement entre bâtiments adjacents
+3. Créez des chaînes de production complètes en alignant vos bâtiments
+4. Observez les **indicateurs de connexion dorés** qui montrent le flux de ressources !
+
+### 💡 Astuces
+- **Indicateur vert** : Un point vert en haut à droite d'un bâtiment = production active
+- **Lignes dorées** : Montrent les transferts automatiques de ressources entre bâtiments
+- **Particules** : Des icônes de ressources s'envolent lors de la production
+- **Pulsation** : Les bâtiments actifs pulsent légèrement
+- **Clic droit** : Inspectez un bâtiment pour voir son inventaire et sa progression
 
 ## 🔧 Architecture technique
 
@@ -149,18 +179,27 @@ const CONFIG = {
 };
 ```
 
+## ✅ Nouvelles fonctionnalités (v2.0)
+
+- ✅ **Transport automatique** : Les ressources circulent automatiquement entre bâtiments adjacents
+- ✅ **Nouvelles ressources** : Acier, câbles, circuits avancés, béton, pierre
+- ✅ **Nouveaux bâtiments** : Haut fourneau, assembleur avancé, carrière de pierre
+- ✅ **Animations visuelles** : Particules, pulsations, indicateurs de connexion
+- ✅ **Sauvegarde/Chargement** : Système complet de gestion de parties
+- ✅ **Effets visuels** : Indicateurs de production, flux de ressources animés
+
 ## 🚧 Fonctionnalités à venir
 
-- [ ] Système de convoyeurs fonctionnel avec transport automatique
-- [ ] Plus de types de bâtiments (raffineries, centrales électriques)
-- [ ] Système d'électricité
+- [ ] Système de convoyeurs longue distance
+- [ ] Plus de bâtiments (raffineries, centrales électriques)
+- [ ] Système d'électricité avec gestion de l'énergie
 - [ ] Système de recherche/technologie
-- [ ] Sauvegarde et chargement de parties
-- [ ] Statistiques de production
+- [ ] Statistiques de production détaillées
 - [ ] Mode construction rapide
-- [ ] Optimisation des performances pour grandes usines
-- [ ] Effets visuels et animations
-- [ ] Son et musique
+- [ ] Optimisation pour très grandes usines (1000+ bâtiments)
+- [ ] Effets sonores et musique
+- [ ] Mode tutoriel interactif
+- [ ] Défis et objectifs de production
 
 ## 🎨 Personnalisation
 
