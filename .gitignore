@@ -1,0 +1,28 @@
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (si jamais utilisé)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Fichiers temporaires
+*.tmp
+*.temp
+
+# Environnement local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
