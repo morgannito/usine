@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usine - Factory Builder Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-container">
+            <div id="top-bar">
+                <div id="resources-display"></div>
+                <div id="game-info">
+                    <span id="fps">FPS: 60</span>
+                    <button id="save-game" class="btn-action">💾 Sauvegarder</button>
+                    <button id="load-game" class="btn-action">📁 Charger</button>
+                    <button id="reset-game" class="btn-danger-small">🔄 Nouvelle partie</button>
+                </div>
+            </div>
+
+            <div id="building-menu">
+                <h3>Bâtiments</h3>
+                <div id="building-buttons"></div>
+            </div>
+
+            <div id="building-info" class="hidden">
+                <h3 id="info-title"></h3>
+                <div id="info-content"></div>
+                <button id="delete-building" class="btn-danger">Supprimer</button>
+            </div>
+
+            <div id="controls-help">
+                <h4>Contrôles</h4>
+                <ul>
+                    <li>WASD / Flèches: Déplacer la caméra</li>
+                    <li>Molette: Zoom</li>
+                    <li>Clic gauche: Placer un bâtiment</li>
+                    <li>Clic droit: Sélectionner un bâtiment</li>
+                    <li>Espace: Pause/Play</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
