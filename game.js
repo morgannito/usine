@@ -106,10 +106,12 @@ const BUILDING_TYPES = {
     },
     CONVEYOR: {
         name: 'Convoyeur',
-        description: 'Transporte les ressources',
+        description: 'Transporte les ressources sur de longues distances',
         color: '#FFD700',
         isConveyor: true,
-        transportSpeed: 1,
+        transportSpeed: 2, // Ressources par seconde
+        capacity: 10, // Peut contenir plusieurs ressources en transit
+        autoOutput: true, // Transfère automatiquement aux bâtiments adjacents
     },
     STORAGE: {
         name: 'Stockage',
@@ -286,6 +288,16 @@ class Building {
     getAvailableResources() {
         const available = {};
 
+        // Pour les convoyeurs : toutes les ressources
+        if (this.config.isConveyor) {
+            for (let [resource, amount] of Object.entries(this.inventory)) {
+                if (amount > 0) {
+                    available[resource] = amount;
+                }
+            }
+            return available;
+        }
+
         // Pour les extracteurs et les machines avec autoOutput
         if (this.config.produces || this.config.autoOutput) {
             for (let [resource, amount] of Object.entries(this.inventory)) {
@@ -304,6 +316,23 @@ class Building {
         }
 
         return available;
+    }
+
+    // Obtenir le total de ressources dans l'inventaire
+    getTotalInventory() {
+        let total = 0;
+        for (let amount of Object.values(this.inventory)) {
+            total += amount;
+        }
+        return total;
+    }
+
+    // Pour les convoyeurs : peut-on accepter plus de ressources ?
+    canAcceptResources() {
+        if (!this.config.isConveyor) {
+            return true; // Les autres bâtiments acceptent toujours
+        }
+        return this.getTotalInventory() < (this.config.capacity || 10);
     }
 
     getInfo() {
@@ -459,14 +488,27 @@ class GameMap {
                     );
 
                     adjacentBuildings.forEach(targetBuilding => {
+                        // Vérifier si le bâtiment cible peut accepter des ressources
+                        if (!targetBuilding.canAcceptResources()) {
+                            return; // Skip si le convoyeur est plein
+                        }
+
                         const needed = targetBuilding.getNeededResources();
 
-                        if (needed[resourceType] && needed[resourceType] > 0) {
+                        // Si c'est un convoyeur, il accepte toutes les ressources
+                        const canAccept = targetBuilding.config.isConveyor ||
+                                         (needed[resourceType] && needed[resourceType] > 0);
+
+                        if (canAccept) {
                             // Transférer des ressources
+                            const maxTransfer = targetBuilding.config.isConveyor
+                                ? targetBuilding.config.capacity - targetBuilding.getTotalInventory()
+                                : needed[resourceType] || CONFIG.TRANSFER_RATE;
+
                             const transferAmount = Math.min(
                                 CONFIG.TRANSFER_RATE,
                                 amount,
-                                needed[resourceType]
+                                maxTransfer
                             );
 
                             if (transferAmount > 0) {
@@ -590,6 +632,86 @@ class Game {
         const worldPos = this.camera.screenToWorld(this.mousePos.x, this.mousePos.y);
         this.gridPos.x = Math.floor(worldPos.x / CONFIG.TILE_SIZE);
         this.gridPos.y = Math.floor(worldPos.y / CONFIG.TILE_SIZE);
+
+        // Afficher le tooltip pour le bâtiment sous la souris
+        this.updateTooltip(e.clientX, e.clientY);
+    }
+
+    updateTooltip(mouseX, mouseY) {
+        const tooltip = document.getElementById('building-tooltip');
+        const building = this.map.getBuilding(this.gridPos.x, this.gridPos.y);
+
+        if (building) {
+            // Générer le contenu du tooltip
+            let content = `<div class="tooltip-title">${building.config.name}</div>`;
+            content += `<div>${building.config.description}</div>`;
+
+            // Inventaire
+            const hasResources = Object.values(building.inventory).some(amount => amount > 0);
+            if (hasResources) {
+                content += '<div class="tooltip-section">';
+                content += '<div class="tooltip-section-title">Inventaire :</div>';
+                content += '<div class="tooltip-resources">';
+                for (let [resource, amount] of Object.entries(building.inventory)) {
+                    if (amount > 0) {
+                        content += `<div class="tooltip-resource">${RESOURCES[resource].icon} ${Math.floor(amount)}</div>`;
+                    }
+                }
+                content += '</div>';
+
+                // Pour les convoyeurs, montrer la capacité
+                if (building.config.isConveyor) {
+                    const total = building.getTotalInventory();
+                    const capacity = building.config.capacity || 10;
+                    content += `<div style="margin-top: 5px; font-size: 0.85em;">Capacité: ${Math.floor(total)}/${capacity}</div>`;
+                }
+                content += '</div>';
+            }
+
+            // Progression de production
+            if (building.currentRecipe && building.productionProgress > 0) {
+                const progress = Math.floor((building.productionProgress / building.currentRecipe.time) * 100);
+                content += '<div class="tooltip-section">';
+                content += '<div class="tooltip-section-title">Production :</div>';
+                content += '<div class="tooltip-progress">';
+                content += `<div style="font-size: 0.85em;">`;
+                for (let [resource, amount] of Object.entries(building.currentRecipe.input)) {
+                    content += `${RESOURCES[resource].icon}${amount} `;
+                }
+                content += '→ ';
+                for (let [resource, amount] of Object.entries(building.currentRecipe.output)) {
+                    content += `${RESOURCES[resource].icon}${amount} `;
+                }
+                content += `</div>`;
+                content += `<div class="tooltip-progress-bar">`;
+                content += `<div class="tooltip-progress-fill" style="width: ${progress}%;"></div>`;
+                content += `</div>`;
+                content += `<div style="font-size: 0.85em; margin-top: 2px;">${progress}%</div>`;
+                content += '</div></div>';
+            }
+
+            tooltip.innerHTML = content;
+            tooltip.classList.remove('hidden');
+
+            // Positionner le tooltip
+            const tooltipWidth = 250;
+            const tooltipHeight = 200;
+            let left = mouseX + 15;
+            let top = mouseY + 15;
+
+            // Ajuster si le tooltip dépasse de l'écran
+            if (left + tooltipWidth > window.innerWidth) {
+                left = mouseX - tooltipWidth - 15;
+            }
+            if (top + tooltipHeight > window.innerHeight) {
+                top = mouseY - tooltipHeight - 15;
+            }
+
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        } else {
+            tooltip.classList.add('hidden');
+        }
     }
 
     onClick(e) {
@@ -794,13 +916,46 @@ class Game {
             ctx.save();
             ctx.translate(centerX, centerY);
 
-            // Bâtiment
-            ctx.fillStyle = building.config.color;
-            ctx.fillRect(-size / 2, -size / 2, size, size);
+            // Rendu spécial pour les convoyeurs
+            if (building.config.isConveyor) {
+                // Fond du convoyeur avec bandes
+                ctx.fillStyle = '#3a3a3a';
+                ctx.fillRect(-size / 2, -size / 2, size, size);
 
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(-size / 2, -size / 2, size, size);
+                // Bandes du convoyeur (animation)
+                const bandOffset = (building.animationTime * 20) % 20;
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 3;
+                for (let i = -size; i < size; i += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(-size / 2, i + bandOffset);
+                    ctx.lineTo(size / 2, i + bandOffset);
+                    ctx.stroke();
+                }
+
+                // Bordure dorée pour les convoyeurs
+                ctx.strokeStyle = building.config.color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-size / 2, -size / 2, size, size);
+
+                // Afficher les ressources transportées
+                const total = building.getTotalInventory();
+                if (total > 0) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${Math.floor(total)}`, 0, 0);
+                }
+            } else {
+                // Bâtiment normal
+                ctx.fillStyle = building.config.color;
+                ctx.fillRect(-size / 2, -size / 2, size, size);
+
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size / 2, -size / 2, size, size);
+            }
 
             ctx.restore();
 

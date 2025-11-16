@@ -233,3 +233,76 @@ body {
     background: #d35400;
     transform: translateY(-2px);
 }
+
+/* Tooltip au survol */
+#building-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.95);
+    color: white;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 2px solid #ffa500;
+    pointer-events: none;
+    z-index: 1000;
+    min-width: 200px;
+    max-width: 350px;
+    font-size: 0.9em;
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+#building-tooltip.hidden {
+    display: none;
+}
+
+.tooltip-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: #ffa500;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+}
+
+.tooltip-section {
+    margin-top: 8px;
+}
+
+.tooltip-section-title {
+    font-weight: bold;
+    color: #ffa500;
+    font-size: 0.95em;
+    margin-bottom: 3px;
+}
+
+.tooltip-resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.tooltip-resource {
+    background: rgba(255, 165, 0, 0.2);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.tooltip-progress {
+    margin-top: 5px;
+}
+
+.tooltip-progress-bar {
+    background: #333;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 3px;
+}
+
+.tooltip-progress-fill {
+    background: #ffa500;
+    height: 100%;
+    transition: width 0.3s ease;
+}
