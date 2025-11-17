@@ -12,13 +12,19 @@ Un jeu de construction d'usine inspiré de **Factorio** et **Satisfactory**, jou
 - **Transport automatique** : Les ressources sont transférées automatiquement entre bâtiments adjacents !
 - **Convoyeurs fonctionnels** : Transportez les ressources sur de longues distances avec animation !
 - **Tooltips au survol** : Voir l'inventaire et la production en passant la souris sur les bâtiments
+- **Statistiques de production** : Panneau détaillé montrant production et consommation par minute
+- **Minimap interactive** : Vue d'ensemble de toute la carte avec position de la caméra
+- **Raccourcis clavier** : Contrôles rapides (1-9, R, M, P, Shift) pour une construction efficace
+- **Mode construction rapide** : Maintenez Shift pour placer plusieurs bâtiments sans désélection
+- **Rotation de bâtiments** : Orientez vos structures avant placement
+- **Changement de recettes** : Cliquez sur un bâtiment pour cycler entre ses recettes
 - **12 types de ressources** : Minerais, plaques, acier, circuits, câbles, béton et plus
 - **9 types de bâtiments** : Extracteurs, fourneaux, assembleurs avancés, convoyeurs et stockage
 - **Système de crafting** : Transformez les ressources brutes en composants complexes
-- **Animations visuelles** : Particules, pulsations, indicateurs de connexion, bandes de convoyeurs
+- **Animations visuelles améliorées** : Particules multiples avec rotation, lueur ambiante, ressources animées
 - **Carte procédurale** : Nœuds de ressources générés aléatoirement
 - **Sauvegarde locale** : Système complet de sauvegarde/chargement
-- **Interface intuitive** : Contrôles simples et UI claire
+- **Interface intuitive** : Contrôles simples et UI claire avec numérotation des bâtiments
 - **Performance optimisée** : Rendu efficace avec Canvas 2D
 
 ## 🚀 Comment jouer
@@ -103,11 +109,18 @@ npx http-server
 
 | Touche | Action |
 |--------|--------|
+| **1-9** | Sélection rapide de bâtiment |
 | **WASD** ou **Flèches** | Déplacer la caméra |
 | **Molette** | Zoom / Dézoom |
-| **Clic gauche** | Placer un bâtiment sélectionné |
-| **Clic droit** | Sélectionner et inspecter un bâtiment |
-| **Survol** | Voir les ressources et la production d'un bâtiment |
+| **Clic gauche** | Placer un bâtiment / Changer de recette |
+| **Clic droit** | Inspecter un bâtiment |
+| **Survol** | Voir l'inventaire et la production en temps réel |
+| **R** | Rotation du bâtiment / Reset statistiques |
+| **Delete / X** | Supprimer le bâtiment sous le curseur |
+| **Shift** | Mode construction rapide (maintenir) |
+| **M** | Afficher/Masquer la minimap |
+| **P** | Afficher/Masquer les statistiques de production |
+| **Escape** | Désélectionner |
 | **Espace** | Pause / Play |
 
 ### 📦 Types de ressources
@@ -321,7 +334,17 @@ docker inspect usine-game | grep -A 10 Health
 docker stats usine-game
 ```
 
-## ✅ Dernières fonctionnalités (v2.5)
+## ✅ Dernières fonctionnalités (v3.0)
+
+### Version 3.0 - UX Avancée et Statistiques
+- ✅ **Raccourcis clavier** : Touches 1-9 pour sélection rapide, R pour rotation, Delete/X pour supprimer
+- ✅ **Minimap interactive** : Vue d'ensemble avec M, montre ressources, bâtiments et position caméra
+- ✅ **Statistiques de production** : Panneau détaillé avec P, affiche prod/conso par minute
+- ✅ **Mode construction rapide** : Maintenir Shift pour placer plusieurs bâtiments
+- ✅ **Changement de recette** : Clic sur un bâtiment pour cycler entre recettes
+- ✅ **Effets visuels améliorés** : Particules multiples, lueur ambiante, ressources animées sur convoyeurs
+- ✅ **Rotation de bâtiments** : Touche R pour rotation avant placement
+- ✅ **Interface optimisée** : Numéros sur boutons, indicateurs visuels, tooltips enrichis
 
 ### Version 2.5 - Tooltips et Convoyeurs
 - ✅ **Tooltips au survol** : Voir l'inventaire et la production en temps réel !

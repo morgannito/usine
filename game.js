@@ -210,7 +210,7 @@ class Building {
         return false;
     }
 
-    produce(deltaTime) {
+    produce(deltaTime, game) {
         // Mise à jour de l'animation
         this.animationTime += deltaTime;
 
@@ -221,6 +221,11 @@ class Building {
                 this.inventory[this.config.produces] += this.config.productionRate;
                 this.productionProgress = 0;
                 this.createParticleEffect(this.config.produces);
+
+                // Suivre les statistiques
+                if (game) {
+                    game.productionStats[this.config.produces].produced += this.config.productionRate;
+                }
             }
         } else if (this.currentRecipe && this.canProduce()) {
             // Production avec recette
@@ -229,11 +234,21 @@ class Building {
                 // Consommer les ressources d'entrée
                 for (let [resource, amount] of Object.entries(this.currentRecipe.input)) {
                     this.inventory[resource] -= amount;
+
+                    // Suivre les statistiques
+                    if (game) {
+                        game.productionStats[resource].consumed += amount;
+                    }
                 }
                 // Produire les ressources de sortie
                 for (let [resource, amount] of Object.entries(this.currentRecipe.output)) {
                     this.inventory[resource] += amount;
                     this.createParticleEffect(resource);
+
+                    // Suivre les statistiques
+                    if (game) {
+                        game.productionStats[resource].produced += amount;
+                    }
                 }
                 this.productionProgress = 0;
             }
@@ -241,12 +256,19 @@ class Building {
     }
 
     createParticleEffect(resourceType) {
-        // Ajouter un effet de particule simple
-        this.particleEffects.push({
-            resourceType: resourceType,
-            time: 0,
-            maxTime: 0.5,
-        });
+        // Ajouter plusieurs particules avec variation
+        const particleCount = 2 + Math.floor(Math.random() * 2); // 2-3 particules
+        for (let i = 0; i < particleCount; i++) {
+            this.particleEffects.push({
+                resourceType: resourceType,
+                time: 0,
+                maxTime: 0.6 + Math.random() * 0.4, // 0.6-1.0 secondes
+                offsetX: (Math.random() - 0.5) * 30, // Variation horizontale
+                offsetY: (Math.random() - 0.5) * 10, // Variation verticale initiale
+                velocity: 30 + Math.random() * 20, // Vitesse de montée
+                rotation: Math.random() * Math.PI * 2, // Rotation aléatoire
+            });
+        }
     }
 
     updateParticles(deltaTime) {
@@ -543,10 +565,17 @@ class Game {
         this.fps = 60;
         this.frameCount = 0;
         this.lastFpsUpdate = performance.now();
+        this.buildingRotation = 0; // Rotation du bâtiment à placer (0-3)
+        this.rapidBuildMode = false; // Mode construction rapide (Shift)
+        this.showMinimap = true; // Afficher la minimap
+        this.showStats = false; // Afficher les statistiques de production
+        this.productionStats = {}; // Statistiques de production
+        this.statsResetTime = performance.now(); // Pour calculer les taux de production
 
         this.resources = {};
         Object.keys(RESOURCES).forEach(res => {
             this.resources[res] = 0;
+            this.productionStats[res] = { produced: 0, consumed: 0, producedPerMin: 0, consumedPerMin: 0 };
         });
 
         this.keys = {};
@@ -569,8 +598,8 @@ class Game {
     init() {
         // Événements
         window.addEventListener('resize', () => this.resizeCanvas());
-        window.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
-        window.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
+        window.addEventListener('keydown', (e) => this.onKeyDown(e));
+        window.addEventListener('keyup', (e) => this.onKeyUp(e));
 
         this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
         this.canvas.addEventListener('click', (e) => this.onClick(e));
@@ -585,14 +614,93 @@ class Game {
         this.camera.y = CONFIG.GRID_HEIGHT * CONFIG.TILE_SIZE / 2 - this.canvas.height / 2;
     }
 
+    onKeyDown(e) {
+        this.keys[e.key.toLowerCase()] = true;
+
+        // Raccourcis clavier
+        const buildingTypes = Object.keys(BUILDING_TYPES);
+
+        // Touches 1-9 pour sélectionner rapidement les bâtiments
+        if (e.key >= '1' && e.key <= '9') {
+            const index = parseInt(e.key) - 1;
+            if (index < buildingTypes.length) {
+                const type = buildingTypes[index];
+                const buttons = document.querySelectorAll('.building-btn');
+                if (buttons[index]) {
+                    this.selectBuildingType(type, buttons[index]);
+                }
+            }
+            e.preventDefault();
+        }
+
+        // R pour rotation ou reset stats
+        if (e.key.toLowerCase() === 'r') {
+            if (this.showStats) {
+                // Réinitialiser les statistiques
+                Object.keys(RESOURCES).forEach(res => {
+                    this.productionStats[res] = { produced: 0, consumed: 0, producedPerMin: 0, consumedPerMin: 0 };
+                });
+                this.statsResetTime = performance.now();
+                e.preventDefault();
+            } else if (this.selectedBuildingType) {
+                // Rotation du bâtiment
+                this.buildingRotation = (this.buildingRotation + 1) % 4;
+                e.preventDefault();
+            }
+        }
+
+        // Delete ou X pour supprimer le bâtiment sous la souris
+        if ((e.key === 'Delete' || e.key.toLowerCase() === 'x') && !this.selectedBuildingType) {
+            const building = this.map.getBuilding(this.gridPos.x, this.gridPos.y);
+            if (building) {
+                this.map.removeBuilding(this.gridPos.x, this.gridPos.y);
+            }
+            e.preventDefault();
+        }
+
+        // Escape pour désélectionner
+        if (e.key === 'Escape') {
+            this.selectedBuildingType = null;
+            this.selectedBuilding = null;
+            this.hideInfo();
+            document.querySelectorAll('.building-btn').forEach(btn => btn.classList.remove('selected'));
+            e.preventDefault();
+        }
+
+        // M pour toggle minimap
+        if (e.key.toLowerCase() === 'm') {
+            this.showMinimap = !this.showMinimap;
+            e.preventDefault();
+        }
+
+        // P pour toggle statistiques de production
+        if (e.key.toLowerCase() === 'p') {
+            this.showStats = !this.showStats;
+            e.preventDefault();
+        }
+
+        // Shift pour mode construction rapide
+        if (e.key === 'Shift') {
+            this.rapidBuildMode = true;
+        }
+    }
+
+    onKeyUp(e) {
+        this.keys[e.key.toLowerCase()] = false;
+
+        if (e.key === 'Shift') {
+            this.rapidBuildMode = false;
+        }
+    }
+
     initUI() {
         const buildingButtonsContainer = document.getElementById('building-buttons');
 
-        Object.entries(BUILDING_TYPES).forEach(([type, config]) => {
+        Object.entries(BUILDING_TYPES).forEach(([type, config], index) => {
             const btn = document.createElement('button');
             btn.className = 'building-btn';
             btn.innerHTML = `
-                <div class="building-btn-title">${config.name}</div>
+                <div class="building-btn-title">${index + 1}. ${config.name}</div>
                 <div class="building-btn-desc">${config.description}</div>
             `;
             btn.addEventListener('click', () => this.selectBuildingType(type, btn));
@@ -718,9 +826,34 @@ class Game {
         if (this.selectedBuildingType) {
             const building = this.map.placeBuilding(this.gridPos.x, this.gridPos.y, this.selectedBuildingType);
             if (building) {
+                building.direction = this.buildingRotation;
                 console.log(`Building placed: ${building.config.name} at (${this.gridPos.x}, ${this.gridPos.y})`);
+
+                // En mode construction rapide (Shift), garder le bâtiment sélectionné
+                if (!this.rapidBuildMode) {
+                    // Désélectionner après placement (comportement normal)
+                    // this.selectedBuildingType = null;
+                    // document.querySelectorAll('.building-btn').forEach(btn => btn.classList.remove('selected'));
+                }
+            }
+        } else {
+            // Clic sur un bâtiment pour changer de recette
+            const building = this.map.getBuilding(this.gridPos.x, this.gridPos.y);
+            if (building && building.config.recipes && building.config.recipes.length > 1) {
+                this.cycleRecipe(building);
             }
         }
+    }
+
+    cycleRecipe(building) {
+        const recipes = building.config.recipes;
+        const currentIndex = recipes.indexOf(building.currentRecipe);
+        const nextIndex = (currentIndex + 1) % recipes.length;
+        building.currentRecipe = recipes[nextIndex];
+        building.productionProgress = 0; // Réinitialiser la progression
+
+        // Notification visuelle
+        console.log(`Recipe changed for ${building.config.name}`);
     }
 
     onRightClick(e) {
@@ -780,7 +913,7 @@ class Game {
 
         if (this.lastProductionUpdate >= CONFIG.PRODUCTION_TICK_RATE) {
             buildings.forEach(building => {
-                building.produce(1); // 1 tick de production
+                building.produce(1, this); // 1 tick de production avec référence au jeu
             });
 
             // Transférer automatiquement les ressources entre bâtiments adjacents
@@ -839,6 +972,189 @@ class Game {
 
         // Dessiner l'UI
         this.drawUI();
+
+        // Dessiner la minimap (en dehors de la transformation de caméra)
+        if (this.showMinimap) {
+            this.drawMinimap();
+        }
+
+        // Dessiner les statistiques de production
+        if (this.showStats) {
+            this.drawProductionStats();
+        }
+    }
+
+    updateProductionRates() {
+        // Calculer les taux de production par minute
+        const now = performance.now();
+        const elapsedSeconds = (now - this.statsResetTime) / 1000;
+        const elapsedMinutes = elapsedSeconds / 60;
+
+        if (elapsedMinutes > 0) {
+            Object.keys(RESOURCES).forEach(res => {
+                this.productionStats[res].producedPerMin = this.productionStats[res].produced / elapsedMinutes;
+                this.productionStats[res].consumedPerMin = this.productionStats[res].consumed / elapsedMinutes;
+            });
+        }
+    }
+
+    drawProductionStats() {
+        this.updateProductionRates();
+
+        const ctx = this.ctx;
+        const panelWidth = 350;
+        const panelHeight = 500;
+        const panelX = 20;
+        const panelY = 100;
+
+        // Fond du panneau
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+
+        ctx.strokeStyle = '#ffa500';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+
+        // Titre
+        ctx.fillStyle = '#ffa500';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('📊 Statistiques de Production (P)', panelX + 10, panelY + 25);
+
+        // Temps écoulé
+        const elapsedSeconds = (performance.now() - this.statsResetTime) / 1000;
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = Math.floor(elapsedSeconds % 60);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText(`Temps: ${minutes}m ${seconds}s`, panelX + 10, panelY + 45);
+
+        // Bouton reset
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillRect(panelX + panelWidth - 80, panelY + 30, 70, 25);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Reset (R)', panelX + panelWidth - 45, panelY + 47);
+
+        // Tableau des ressources
+        let y = panelY + 70;
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillText('Ressource', panelX + 10, y);
+        ctx.fillText('Prod/min', panelX + 180, y);
+        ctx.fillText('Cons/min', panelX + 260, y);
+
+        y += 5;
+        ctx.strokeStyle = '#555555';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(panelX + 10, y);
+        ctx.lineTo(panelX + panelWidth - 10, y);
+        ctx.stroke();
+
+        y += 10;
+
+        // Afficher seulement les ressources avec activité
+        Object.entries(RESOURCES).forEach(([resKey, resConfig]) => {
+            const stats = this.productionStats[resKey];
+            const hasActivity = stats.producedPerMin > 0.01 || stats.consumedPerMin > 0.01;
+
+            if (hasActivity) {
+                // Icône et nom
+                ctx.font = '14px Arial';
+                ctx.fillStyle = resConfig.color;
+                ctx.fillText(resConfig.icon, panelX + 10, y + 12);
+
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.fillText(resConfig.name.substring(0, 18), panelX + 35, y + 12);
+
+                // Production
+                ctx.fillStyle = '#4ade80';
+                ctx.textAlign = 'right';
+                ctx.fillText(`+${stats.producedPerMin.toFixed(1)}`, panelX + 240, y + 12);
+
+                // Consommation
+                ctx.fillStyle = '#f87171';
+                ctx.textAlign = 'right';
+                ctx.fillText(`-${stats.consumedPerMin.toFixed(1)}`, panelX + 320, y + 12);
+
+                // Net
+                const net = stats.producedPerMin - stats.consumedPerMin;
+                ctx.fillStyle = net >= 0 ? '#4ade80' : '#f87171';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'left';
+                const netText = net >= 0 ? `+${net.toFixed(1)}` : `${net.toFixed(1)}`;
+                ctx.fillText(`(${netText})`, panelX + 35, y + 24);
+
+                y += 35;
+
+                // Limiter l'affichage pour ne pas déborder
+                if (y > panelY + panelHeight - 20) {
+                    return;
+                }
+            }
+        });
+
+        // Instructions
+        ctx.fillStyle = '#888888';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('R: Réinitialiser | P: Fermer', panelX + 10, panelY + panelHeight - 10);
+    }
+
+    drawMinimap() {
+        const ctx = this.ctx;
+        const minimapSize = 200;
+        const minimapX = this.canvas.width - minimapSize - 20;
+        const minimapY = this.canvas.height - minimapSize - 20;
+
+        // Fond de la minimap
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
+
+        ctx.strokeStyle = '#ffa500';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
+
+        // Échelle de la minimap
+        const scaleX = minimapSize / CONFIG.GRID_WIDTH;
+        const scaleY = minimapSize / CONFIG.GRID_HEIGHT;
+
+        // Dessiner les nœuds de ressources
+        this.map.resourceNodes.forEach(node => {
+            const x = minimapX + node.x * scaleX;
+            const y = minimapY + node.y * scaleY;
+            ctx.fillStyle = RESOURCES[node.resourceType].color;
+            ctx.fillRect(x, y, 2, 2);
+        });
+
+        // Dessiner les bâtiments
+        this.map.getAllBuildings().forEach(building => {
+            const x = minimapX + building.x * scaleX;
+            const y = minimapY + building.y * scaleY;
+            ctx.fillStyle = building.config.color;
+            ctx.fillRect(x, y, 2, 2);
+        });
+
+        // Dessiner la vue de la caméra
+        const viewX = minimapX + (this.camera.x / CONFIG.TILE_SIZE) * scaleX;
+        const viewY = minimapY + (this.camera.y / CONFIG.TILE_SIZE) * scaleY;
+        const viewW = (this.canvas.width / this.camera.zoom / CONFIG.TILE_SIZE) * scaleX;
+        const viewH = (this.canvas.height / this.camera.zoom / CONFIG.TILE_SIZE) * scaleY;
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(viewX, viewY, viewW, viewH);
+
+        // Label
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText('Carte (M)', minimapX + 5, minimapY + 15);
     }
 
     drawGrid() {
@@ -905,8 +1221,21 @@ class Game {
 
             // Animation de pulsation pour les bâtiments actifs
             let scale = 1;
-            if (building.canProduce() && building.productionProgress > 0) {
+            const isProducing = building.canProduce() && building.productionProgress > 0;
+            if (isProducing) {
                 scale = 1 + Math.sin(building.animationTime * 4) * 0.02;
+
+                // Effet de lueur pour les bâtiments actifs
+                const glowSize = CONFIG.TILE_SIZE * 1.2;
+                const glowAlpha = 0.1 + Math.sin(building.animationTime * 3) * 0.05;
+                const gradient = ctx.createRadialGradient(
+                    x + CONFIG.TILE_SIZE / 2, y + CONFIG.TILE_SIZE / 2, CONFIG.TILE_SIZE / 3,
+                    x + CONFIG.TILE_SIZE / 2, y + CONFIG.TILE_SIZE / 2, glowSize / 2
+                );
+                gradient.addColorStop(0, `${building.config.color}${Math.floor(glowAlpha * 255).toString(16).padStart(2, '0')}`);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x - glowSize / 4, y - glowSize / 4, glowSize, glowSize);
             }
 
             const centerX = x + CONFIG.TILE_SIZE / 2;
@@ -938,14 +1267,35 @@ class Game {
                 ctx.lineWidth = 3;
                 ctx.strokeRect(-size / 2, -size / 2, size, size);
 
-                // Afficher les ressources transportées
+                // Afficher les ressources transportées avec animation
                 const total = building.getTotalInventory();
                 if (total > 0) {
+                    // Afficher les icônes de ressources en mouvement
+                    let iconIndex = 0;
+                    for (let [resource, amount] of Object.entries(building.inventory)) {
+                        if (amount > 0) {
+                            const resourcesShown = Math.min(3, Math.ceil(amount)); // Max 3 icônes
+                            for (let i = 0; i < resourcesShown; i++) {
+                                const offset = (building.animationTime * 15 + i * 15) % 45 - 22.5;
+                                const iconX = -size / 4 + offset;
+                                const iconY = -size / 4 + (iconIndex * 8);
+
+                                ctx.font = '10px Arial';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillStyle = RESOURCES[resource].color;
+                                ctx.fillText(RESOURCES[resource].icon, iconX, iconY);
+                            }
+                            iconIndex++;
+                        }
+                    }
+
+                    // Compteur total
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(`${Math.floor(total)}`, 0, 0);
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(`${Math.floor(total)}`, size / 2 - 2, size / 2 - 2);
                 }
             } else {
                 // Bâtiment normal
@@ -968,18 +1318,33 @@ class Game {
                 ctx.fill();
             }
 
-            // Particules
+            // Particules améliorées
             building.particleEffects.forEach(particle => {
                 const progress = particle.time / particle.maxTime;
-                const particleY = y - (progress * 30);
+                const particleX = centerX + particle.offsetX;
+                const particleY = y + particle.offsetY - (progress * particle.velocity);
                 const particleAlpha = 1 - progress;
+                const scale = 1 + progress * 0.3; // Agrandir légèrement
 
+                ctx.save();
                 ctx.globalAlpha = particleAlpha;
+                ctx.translate(particleX, particleY);
+                ctx.rotate(particle.rotation + progress * Math.PI * 2);
+                ctx.scale(scale, scale);
+
                 ctx.font = '16px Arial';
                 ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Ombre portée pour meilleur contraste
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillText(RESOURCES[particle.resourceType].icon, 1, 1);
+
+                // Icône colorée
                 ctx.fillStyle = RESOURCES[particle.resourceType].color;
-                ctx.fillText(RESOURCES[particle.resourceType].icon, centerX, particleY);
-                ctx.globalAlpha = 1;
+                ctx.fillText(RESOURCES[particle.resourceType].icon, 0, 0);
+
+                ctx.restore();
             });
 
             // Barre de progression
@@ -1048,6 +1413,35 @@ class Game {
         ctx.strokeStyle = canPlace ? '#00ff00' : '#ff0000';
         ctx.lineWidth = 2;
         ctx.strokeRect(x + 2, y + 2, CONFIG.TILE_SIZE - 4, CONFIG.TILE_SIZE - 4);
+
+        // Indicateur de rotation (petite flèche)
+        if (this.buildingRotation > 0) {
+            const centerX = x + CONFIG.TILE_SIZE / 2;
+            const centerY = y + CONFIG.TILE_SIZE / 2;
+            const arrowSize = 15;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate((this.buildingRotation * Math.PI) / 2);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(0, -arrowSize);
+            ctx.lineTo(arrowSize / 2, 0);
+            ctx.lineTo(-arrowSize / 2, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Indicateur mode construction rapide
+        if (this.rapidBuildMode) {
+            ctx.fillStyle = '#ffff00';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('SHIFT', x + CONFIG.TILE_SIZE / 2, y - 10);
+        }
     }
 
     drawSelection(gridX, gridY) {

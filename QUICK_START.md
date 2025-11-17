@@ -20,11 +20,18 @@ open index.html
 
 ## Contrôles de base 🎮
 
+- **1-9** : Sélection rapide de bâtiment
 - **WASD / Flèches** : Déplacer la caméra
 - **Molette** : Zoom
-- **Clic gauche** : Placer un bâtiment
+- **Clic gauche** : Placer un bâtiment / Changer de recette
 - **Clic droit** : Inspecter un bâtiment
 - **Survol** : Voir l'inventaire en temps réel !
+- **R** : Rotation / Reset stats
+- **Delete / X** : Supprimer un bâtiment
+- **Shift** : Mode construction rapide
+- **M** : Toggle minimap
+- **P** : Toggle statistiques
+- **Escape** : Désélectionner
 - **Espace** : Pause/Play
 
 ## Premiers pas 🎓
@@ -37,11 +44,17 @@ open index.html
 
 ## Astuces 💡
 
+- **Touches 1-9** : Sélection ultra-rapide des bâtiments sans utiliser la souris !
+- **Shift** : Maintenez pour placer plusieurs fois le même bâtiment
+- **Minimap (M)** : Vue d'ensemble pour naviguer rapidement sur la carte
+- **Statistiques (P)** : Suivez votre production par minute en temps réel
 - **Passez la souris** sur un bâtiment pour voir son inventaire en temps réel !
-- Les **lignes dorées** montrent les flux de ressources
-- Un **point vert** = bâtiment en production
-- **Les convoyeurs** ont des bandes animées qui montrent le flux
+- Les **lignes dorées** montrent les flux de ressources entre bâtiments
+- Un **point vert** = bâtiment en production active
+- **Lueur colorée** : Les bâtiments actifs brillent légèrement
+- **Les convoyeurs** montrent les ressources en mouvement sur les bandes !
 - **Utilisez des convoyeurs** pour connecter des bâtiments éloignés (capacité: 10 unités)
+- **Clic sur un bâtiment** (sans sélection) pour changer sa recette
 - **Clic droit** sur un bâtiment pour tous les détails
 - Alignez vos bâtiments pour créer des chaînes automatiques !
 
